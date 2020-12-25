@@ -22,6 +22,7 @@ Chromebrew - Package manager for Chrome OS http://skycocker.github.io/chromebrew
 Usage:
   crew build [options] [-k|--keep] <name> ...
   crew const [options] [<name> ...]
+  crew depends [options] [-s|--from-source] <name> ...
   crew download [options] [-s|--from-source] <name> ...
   crew files [options] <name> ...
   crew help [<command>]
@@ -255,6 +256,10 @@ def help (pkgName)
     puts "Download package(s) to `CREW_BREW_DIR` (#{CREW_BREW_DIR}), but don't install."
     puts "If `-v` or `--verbose` is present, extra information will be displayed."
     puts "If `-s` or `--from-source` is present, the package source(s) will be downloaded instead of binaries."
+  when "depends"
+    puts "List dependencies of package(s)."
+    puts "Usage: crew depends <package1> [<package2> ...]"
+    puts "If `-s` or `--from-source` is present, build dependencies will be included as well."
   when "files"
     puts "Display installed files of package(s)."
     puts "Usage: crew files <package1> [<package2> ...]"
@@ -315,7 +320,7 @@ def help (pkgName)
     puts "Usage: crew whatprovides <pattern> ..."
     puts "The <pattern> is a search string which can contain regular expressions."
   else
-    puts "Available commands: build, const, download, files, help, install, list, postinstall, reinstall ,remove, search, update, upgrade, whatprovides"
+    puts "Available commands: build, const, depends, download, files, help, install, list, postinstall, reinstall ,remove, search, update, upgrade, whatprovides"
   end
 end
 
@@ -708,7 +713,7 @@ def resolve_dependencies_and_install
   puts "#{@pkg.name.capitalize} installed!".lightgreen
 end
 
-def expand_dependencies
+def expand_dependencies (return_packages = false)
   @dependencies = []
   def push_dependencies
     if @pkg.is_binary?(@device[:architecture]) ||
@@ -730,6 +735,12 @@ def expand_dependencies
     end
   end
   push_dependencies
+  if return_packages
+    @dependencies = @dependencies.sort.map {|dep|
+      search dep, true
+      @pkg
+    }
+  end
 end
 
 def resolve_dependencies
@@ -955,6 +966,19 @@ def build_command (args)
     search @pkgName
     print_current_package @opt_verbose
     resolve_dependencies_and_build
+  end
+end
+
+def depends_command (args)
+  args["<name>"].each do |name|
+    @pkgName = name
+    search @pkgName
+    puts "Dependencies:"
+    @pkg.build_from_source = true if @opt_src
+    expand_dependencies true
+    @dependencies.each do |dep|
+      puts "#{dep.name}: #{dep.version}"
+    end
   end
 end
 
