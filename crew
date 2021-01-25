@@ -664,26 +664,34 @@ def strip_find_files (find_cmd, strip_option = "")
   system "#{find_cmd} | xargs -r sh -c 'for i in \"$0\" \"$@\"; do case \"$(head -c 4 $i)\" in ?ELF|\!?ar) echo \"$i\";; esac ; done' | xargs -r llvm-strip #{strip_option}"
 end
 
-def install_package (pkgdir)
+def strip_binaries (pkgdir)
   Dir.chdir pkgdir do
-    # install filelist, dlist and binary files
-    puts 'Performing install...'
-
-    FileUtils.mv 'dlist', CREW_CONFIG_PATH + "meta/#{@pkg.name}.directorylist", verbose: @fileutils_verbose
-    FileUtils.mv 'filelist', CREW_CONFIG_PATH + "meta/#{@pkg.name}.filelist", verbose: @fileutils_verbose
-
+    puts "Stripping binaries..."
     # Strip libraries with -S
     strip_find_files "find . -type f -name 'lib*.a' -print", "-S"
     strip_find_files "find . -type f -name 'lib*.so*' -print", "-S"
 
     # Strip binaries but not compressed archives
     strip_find_files "find . -type f ! -iname '*\.bz2' ! -iname '*\.gz' ! -iname '*\.lha' ! -iname '*\.lz' ! -iname '*\.rar' ! -iname '*\.tar' ! -iname '*\.tbz' ! -iname '*\.tgz' ! -iname '\*.txz' ! -iname '*\.xz' ! -iname '*\.zip' -perm /111 -print | sed -e '/lib.*\.a$/d' -e '/lib.*\.so/d'"
+  end
+end
+
+def install_package (pkgdir)
+  Dir.chdir pkgdir do
+    # install filelist, dlist and binary files
+    puts 'Performing install...'
+
+    # install filelist, dlist and binary files
+    puts 'Performing install...'
+
+    FileUtils.mv 'dlist', CREW_CONFIG_PATH + "meta/#{@pkg.name}.directorylist", verbose: @fileutils_verbose
+    FileUtils.mv 'filelist', CREW_CONFIG_PATH + "meta/#{@pkg.name}.filelist", verbose: @fileutils_verbose
 
     if Dir.exists? "#{pkgdir}/home" then
       system "tar -c#{@verbose}f - ./usr/* ./home/* | (cd /; tar xp --keep-directory-symlink -f -)"
     else
       system "tar -c#{@verbose}f - ./usr/* | (cd /; tar xp --keep-directory-symlink -f -)"
-      end
+    end
   end
 end
 
@@ -808,6 +816,13 @@ def install
     end
   end
 
+  unless @pkg.is_fake?
+    # perform pre-install process
+    pre_install dest_dir
+
+    strip_binaries dest_dir
+  end
+
   # remove it just before the file copy
   if @pkg.in_upgrade
     puts 'Removing since upgrade or reinstall...'
@@ -815,9 +830,6 @@ def install
   end
 
   unless @pkg.is_fake?
-    # perform pre-install process
-    pre_install dest_dir
-
     # perform install process
     install_package dest_dir
 
