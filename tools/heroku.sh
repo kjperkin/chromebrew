@@ -1,9 +1,10 @@
 #!/bin/bash
 
+: ${TEMPDIR:=/tmp}
 PWD_HOLD="${PWD}"
 
-cd /tmp
-if [[ -d /tmp/heroku-cli ]]; then
+cd "$TEMPDIR"
+if [[ -d "${TEMPDIR}/heroku-cli" ]]; then
   cd heroku-cli
   git pull &>/dev/null
   cd ..
@@ -22,30 +23,32 @@ echo "Package file located at ${PWD_HOLD}/heroku.rb"
 
 cd "${PWD_HOLD}"
 
-echo "require 'package'" > heroku.rb
-echo >> heroku.rb
-echo "class Heroku < Package" >> heroku.rb
-echo "  description 'The Heroku Command Line Interface (CLI), formerly known as the Heroku Toolbelt, is a tool for creating and managing Heroku apps from the command line / shell of various operating systems.'" >> heroku.rb
-echo "  homepage 'https://devcenter.heroku.com/articles/heroku-cli'" >> heroku.rb
-echo "  version '${HEROKU_V}'" >> heroku.rb
-echo "  source_url '${SOURCE_URL}'" >> heroku.rb
-echo "  source_sha256 '${SOURCE_SHA256}'" >> heroku.rb
-echo >> heroku.rb
-echo "  binary_url ({" >> heroku.rb
-echo "  })" >> heroku.rb
-echo "  binary_sha256 ({" >> heroku.rb
-echo "  })" >> heroku.rb
-echo >> heroku.rb
-echo "  depends_on 'yarn'" >> heroku.rb
-echo >> heroku.rb
-echo "  def self.build" >> heroku.rb
-echo "    system 'yarn install'" >> heroku.rb
-echo "  end" >> heroku.rb
-echo >> heroku.rb
-echo "  def self.install" >> heroku.rb
-echo "    system \"mkdir -p #{CREW_DEST_PREFIX}/share/heroku\"" >> heroku.rb
-echo "    system \"cp -r . #{CREW_DEST_PREFIX}/share/heroku\"" >> heroku.rb
-echo "    system \"mkdir -p #{CREW_DEST_PREFIX}/bin\"" >> heroku.rb
-echo "    system \"ln -s #{CREW_PREFIX}/share/heroku/bin/run #{CREW_DEST_PREFIX}/bin/heroku\"" >> heroku.rb
-echo "  end" >> heroku.rb
-echo "end" >> heroku.rb
+cat >heroku.rb <<EOF
+require 'package'
+
+class Heroku < Package
+  description 'The Heroku Command Line Interface (CLI), formerly known as the Heroku Toolbelt, is a tool for creating and managing Heroku apps from the command line / shell of various operating systems.'
+  homepage 'https://devcenter.heroku.com/articles/heroku-cli'
+  version '${HEROKU_V}'
+  source_url '${SOURCE_URL}'
+  source_sha256 '${SOURCE_SHA256}'
+
+  binary_url ({
+  })
+  binary_sha256 ({
+  })
+
+  depends_on 'yarn'
+
+  def self.build
+    system 'yarn install'
+  end
+
+  def self.install
+    system "mkdir -p #{CREW_DEST_PREFIX}/share/heroku"
+    system "cp -r . #{CREW_DEST_PREFIX}/share/heroku"
+    system "mkdir -p #{CREW_DEST_PREFIX}/bin"
+    system "ln -s #{CREW_PREFIX}/share/heroku/bin/run #{CREW_DEST_PREFIX}/bin/heroku"
+  end
+end
+EOF
